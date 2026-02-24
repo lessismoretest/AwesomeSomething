@@ -1,0 +1,1642 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVG/PNG/JPEG/WebP/AVIF 网格墙壁纸生成器</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --panel: rgba(255, 255, 255, 0.84);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --accent: #0071e3;
+      --ok: #34c759;
+      --page-pad: 6px;
+      --layout-max: 1520px;
+      --left-col: 286px;
+      --style-col: 248px;
+    }
+    html, body { height: 100%; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: var(--page-pad);
+      overflow: hidden;
+    }
+    .container {
+      max-width: var(--layout-max);
+      margin: 0 auto;
+      display: grid;
+      gap: 6px;
+      grid-template-columns: var(--left-col) minmax(0, 1fr) var(--style-col);
+      height: calc(100vh - (var(--page-pad) * 2));
+      overflow: hidden;
+      align-items: stretch;
+    }
+    .control-stack { grid-column: 1; grid-row: 1; }
+    .preview-stack { grid-column: 2; grid-row: 1; }
+    .visual-style-panel { grid-column: 3; grid-row: 1; }
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      padding: 8px;
+      backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
+    h1 {
+      font-size: 15px;
+      margin: 0 0 3px;
+    }
+    .muted { color: var(--muted); font-size: 10px; }
+    label { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
+    input, select, button, textarea {
+      width: 100%;
+      margin-top: 2px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #d2d2d7;
+      background: #fff;
+      color: var(--text);
+      font-size: 11px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(0, 113, 227, 0.45);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.14);
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .check-row {
+      margin-top: 4px;
+      display: grid;
+      gap: 4px;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .check-item input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      accent-color: #0071e3;
+    }
+    .radio-row {
+      margin-top: 3px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .radio-row label {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .radio-row input[type="radio"] {
+      width: auto;
+      margin: 0;
+      accent-color: #0071e3;
+    }
+    .mode-card {
+      margin-top: 3px;
+      padding: 6px;
+      border: 1px solid #e5e5ea;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .sub-card {
+      margin-top: 4px;
+      padding: 6px;
+      border: 1px solid #e5e5ea;
+      border-radius: 7px;
+      background: #fff;
+    }
+    .upload-inline {
+      position: relative;
+      display: block;
+    }
+    .upload-inline > button {
+      margin-top: 0;
+      width: 100%;
+    }
+    .upload-menu {
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 0;
+      display: none;
+      background: #fff;
+      border: 1px solid #d2d2d7;
+      border-radius: 7px;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
+      padding: 2px;
+      z-index: 20;
+      width: 100%;
+    }
+    .upload-menu.open { display: block; }
+    .upload-menu button {
+      width: 100%;
+      margin: 0;
+      padding: 4px 6px;
+      border: none;
+      background: transparent;
+      color: #1d1d1f;
+      box-shadow: none;
+      font-size: 10px;
+      text-align: left;
+    }
+    .upload-menu button:hover {
+      background: #f2f2f7;
+      border-radius: 8px;
+    }
+    #form {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      padding-bottom: 0;
+    }
+    .form-actions {
+      margin-top: auto;
+      padding: 5px 8px 8px;
+      border: none;
+      border-top: 1px solid #263148;
+      border-radius: 0;
+      background: color-mix(in srgb, var(--panel) 94%, #fff 6%);
+      box-shadow: none;
+    }
+    .form-actions button {
+      margin-top: 0;
+      width: 100%;
+    }
+    .form-block {
+      margin-top: 4px;
+      padding: 6px;
+      border: 1px solid #e5e5ea;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .form-block:first-of-type {
+      margin-top: 3px;
+    }
+    .block-title {
+      margin: 0 0 3px;
+      font-size: 10px;
+      color: #6e6e73;
+      font-weight: 600;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .btn-row button {
+      margin-top: 0;
+    }
+    button {
+      background: linear-gradient(120deg, #0a84ff, var(--accent));
+      border: none;
+      font-weight: 700;
+      margin-top: 4px;
+      cursor: pointer;
+      color: #fff;
+      box-shadow: 0 3px 8px rgba(0, 113, 227, 0.14);
+    }
+    #generateBtn {
+      background: linear-gradient(120deg, #0a84ff, var(--accent));
+      color: #fff;
+    }
+    .secondary-btn {
+      margin-top: 4px;
+      background: #f2f2f7;
+      border: 1px solid #d2d2d7;
+      color: #1d1d1f;
+      font-weight: 600;
+      box-shadow: none;
+    }
+    .tertiary-btn {
+      margin-top: 4px;
+      background: #f2f2f7;
+      border: 1px solid #d2d2d7;
+      color: #1d1d1f;
+      font-weight: 600;
+      box-shadow: none;
+    }
+    .sample-btn {
+      margin-top: 4px;
+      background: linear-gradient(120deg, #8b5cf6, #7c3aed);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 3px 8px rgba(124, 58, 237, 0.16);
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .preview {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e5e5ea;
+      background: #fff;
+      min-height: 140px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .preview img { width: 100%; height: auto; display: block; }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      width: 100%;
+      padding: 4px;
+    }
+    .variant-card {
+      border: 1px solid #e5e5ea;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    }
+    .variant-title {
+      font-size: 9px;
+      color: var(--muted);
+      padding: 4px 6px 0;
+    }
+    .variant-card img {
+      width: 100%;
+      display: block;
+      padding: 4px;
+      cursor: zoom-in;
+    }
+    .variant-link {
+      display: inline-block;
+      font-size: 9px;
+      color: #fff;
+      background: var(--ok);
+      padding: 3px 6px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .variant-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      padding: 0 6px 6px;
+    }
+    .variant-more-btn {
+      width: auto;
+      margin: 0;
+      padding: 3px 6px;
+      border-radius: 5px;
+      border: none;
+      background: linear-gradient(120deg, #0a84ff, var(--accent));
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .actions a {
+      color: #fff;
+      background: var(--ok);
+      padding: 4px 8px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 10px;
+    }
+    .status { color: var(--muted); font-size: 10px; }
+    .preview-panel { position: relative; }
+    .control-stack {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      min-height: 0;
+      height: 100%;
+      overflow: auto;
+    }
+    .preview-stack {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      min-height: 0;
+      height: 100%;
+      overflow: auto;
+    }
+    .control-panel {
+      align-self: start;
+      width: 100%;
+      justify-self: stretch;
+    }
+    .control-panel-top {
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
+    .control-panel-bottom {
+      position: sticky;
+      bottom: 0;
+      align-self: stretch;
+      margin-top: auto;
+      z-index: 10;
+    }
+    .visual-style-panel {
+      align-self: start;
+      min-height: 0;
+      height: 100%;
+      overflow: auto;
+    }
+    .preview-actions-panel {
+      position: sticky;
+      bottom: 0;
+      align-self: stretch;
+      justify-self: end;
+      padding: 4px;
+      z-index: 20;
+      width: auto;
+    }
+    .preview-fab-group {
+      position: static;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .download-all-btn {
+      width: auto;
+      min-width: 0;
+      padding: 5px 7px;
+      margin: 0;
+      border-radius: 6px;
+      border: none;
+      background: var(--ok);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 7px rgba(0, 0, 0, 0.12);
+    }
+    .refresh-icon-btn {
+      position: static;
+      width: auto;
+      min-width: 0;
+      padding: 5px 6px;
+      margin: 0;
+      border-radius: 6px;
+      border: none;
+      background: linear-gradient(120deg, #0a84ff, var(--accent));
+      color: #fff;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 7px rgba(0, 113, 227, 0.12);
+    }
+    .refresh-icon-btn svg {
+      width: 13px;
+      height: 13px;
+      display: block;
+      margin-right: 2px;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 12, 17, 0.74);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 8px;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-width: min(92vw, 1800px);
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #fff;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      width: auto;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      color: #1d1d1f;
+      padding: 5px 7px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 10px;
+    }
+    .lightbox-download {
+      position: absolute;
+      top: 18px;
+      right: 84px;
+      width: auto;
+      background: var(--ok);
+      color: #fff;
+      border: none;
+      padding: 5px 7px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .lightbox-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: auto;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: #1d1d1f;
+      padding: 6px 7px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      margin: 0;
+    }
+    .lightbox-prev { left: 20px; }
+    .lightbox-next { right: 20px; }
+    @media (min-width: 1180px) {
+      .preview-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (min-width: 1520px) {
+      .preview-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      .container { grid-template-columns: 1fr; }
+      .control-stack,
+      .preview-stack,
+      .visual-style-panel,
+      .preview-actions-panel {
+        grid-column: auto;
+        grid-row: auto;
+      }
+      .container {
+        height: auto;
+        overflow: visible;
+      }
+      .preview-stack,
+      .control-stack {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+      .visual-style-panel {
+        position: static;
+        top: auto;
+        max-height: none;
+        overflow: visible;
+      }
+      .preview-actions-panel {
+        position: static;
+        bottom: auto;
+        margin-top: 0;
+      }
+      .control-panel-top,
+      .control-panel-bottom {
+        position: static;
+        top: auto;
+        bottom: auto;
+        overflow: visible;
+        max-height: none;
+      }
+      .control-stack { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <form id="form" class="control-stack">
+      <section class="card control-panel control-panel-top">
+        <h1>上传</h1>
+        <div class="form-block">
+          <label>内容模式</label>
+          <div class="radio-row" id="contentMode">
+            <label><input type="radio" name="content_mode" value="media" checked />图片模式</label>
+            <label><input type="radio" name="content_mode" value="text" />文本模式</label>
+          </div>
+
+          <div id="mediaModeFields" class="mode-card">
+            <label>上传资源（文件或文件夹）</label>
+            <div class="upload-inline">
+              <button class="secondary-btn" id="pickAssetsBtn" type="button">上传</button>
+              <div class="upload-menu" id="uploadMenu">
+                <button id="pickFilesBtn" type="button">上传文件</button>
+                <button id="pickFolderBtn" type="button">上传文件夹</button>
+              </div>
+            </div>
+            <div class="muted" id="uploadSummary" style="margin-top:3px">未选择资源</div>
+            <input type="file" name="svgs" id="svgFiles" accept=".svg,image/svg+xml,.png,image/png,.jpg,.jpeg,image/jpeg,.webp,image/webp,.avif,image/avif" multiple style="display:none" />
+            <input type="file" name="svgs" id="svgFolder" webkitdirectory directory multiple style="display:none" />
+
+            <label>或直接选择本机 SVG/PNG/JPEG/WebP/AVIF 目录</label>
+            <select name="svg_dir" id="svgDir">
+              <option value="">仅使用上传文件</option>
+            </select>
+            <button class="secondary-btn" id="manageFilesBtn" type="button">管理</button>
+          </div>
+
+          <div id="textModeFields" class="mode-card" style="display:none">
+            <label>文本内容（每行一个项）</label>
+            <textarea name="text_content" id="textContent" rows="8" placeholder="Apple&#10;OpenAI&#10;Tesla"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card control-panel control-panel-top">
+        <h1>画布</h1>
+        <div class="form-block" style="margin-top:0">
+          <label>壁纸预设</label>
+          <select name="preset" id="presetSelect">
+            <option value="macbook_16_10">MacBook 16:10 (2560×1600)</option>
+            <option value="macbook_pro_16">MacBook Pro 16" (3456×2234)</option>
+            <option value="imac_24">iMac 24" (4480×2520)</option>
+            <option value="studio_display">Studio Display (5120×2880)</option>
+            <option value="iphone_17_pro_max">iPhone 17 Pro Max (1320×2868)</option>
+            <option value="custom">自定义</option>
+          </select>
+
+          <div class="row">
+            <div>
+              <label>宽度（自定义时生效）</label>
+              <input type="number" name="width" value="2560" min="320" max="10000" />
+            </div>
+            <div>
+              <label>高度（自定义时生效）</label>
+              <input type="number" name="height" value="1600" min="320" max="10000" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>外边距（px）</label>
+              <input type="number" name="padding" value="80" min="0" max="500" />
+            </div>
+            <div>
+              <label>背景色</label>
+              <input type="color" name="bg" value="#ffffff" />
+            </div>
+          </div>
+          <div class="check-row">
+            <label class="check-item">
+              <input type="checkbox" name="transparent_bg" id="transparentBg" />
+              透明背景（导出 PNG 保留 alpha）
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card control-panel control-panel-top">
+        <h1>拼图布局</h1>
+        <div class="form-block" style="margin-top:0">
+          <div class="row">
+            <div>
+              <label>最小列数：<span id="colsMinValue">4</span></label>
+              <input type="range" name="cols_min" id="colsMin" value="4" min="1" max="20" step="1" />
+            </div>
+            <div>
+              <label>最大列数：<span id="colsMaxValue">10</span></label>
+              <input type="range" name="cols_max" id="colsMax" value="10" min="1" max="20" step="1" />
+            </div>
+          </div>
+
+          <input type="hidden" name="cols" id="colsValueInput" value="4" />
+
+          <div class="row">
+            <div>
+              <label>间距（px）</label>
+              <input type="number" name="gap" value="24" min="0" max="200" />
+            </div>
+            <div>
+              <label>最小行高（px，自适应网格）</label>
+              <input type="number" name="min_row_height" value="1" min="1" max="120" />
+            </div>
+          </div>
+          <div class="check-row">
+            <label class="check-item">
+              <input type="checkbox" name="adaptive_grid" checked />
+              网格按每张图比例自适应大小
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="add_zima_blue" id="addZimaBlue" />
+              添加齐马蓝（随机插入 #5BC2E7 正方形色块）
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card control-panel control-panel-bottom">
+        <h1>生成与输出</h1>
+        <div class="form-block" style="margin-top:0">
+          <label>图片顺序</label>
+          <div class="radio-row" id="refreshMode">
+            <label><input type="radio" name="refresh_mode" value="ordered" />按图片顺序</label>
+            <label><input type="radio" name="refresh_mode" value="random" checked />随机</label>
+          </div>
+          <div class="btn-row" style="margin-top:4px">
+            <button id="generateBtn" type="button">生成单张</button>
+            <button class="sample-btn" id="sampleBtn" type="button">生成多张</button>
+          </div>
+          <div class="muted" id="sampleMeta" style="margin-top:3px"></div>
+        </div>
+      </section>
+    </form>
+
+    <div class="preview-stack">
+      <section class="card preview-panel">
+        <div class="preview" id="preview">等待生成预览</div>
+        <div class="actions" id="actions"></div>
+        <div class="status" id="status"></div>
+      </section>
+
+      <section class="card preview-actions-panel">
+        <div class="preview-fab-group">
+          <button class="download-all-btn" id="downloadAllBtn" type="button">下载全部</button>
+          <button class="refresh-icon-btn" id="refreshBtn" type="button" title="刷新" aria-label="刷新">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 7a7 7 0 0 1 11 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M18 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M17 17a7 7 0 0 1-11-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M6 20v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>刷新</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <section class="card visual-style-panel" id="visualStylePanel">
+      <h1>叠加</h1>
+        <div class="form-block" style="margin-top:0">
+          <div class="sub-card" id="textStyleFields">
+            <label>文本模式样式</label>
+            <div class="row">
+              <div>
+                <label>字体</label>
+                <select name="text_font_family" id="textFontFamily" form="form">
+                  <option value="pingfang">PingFang</option>
+                  <option value="sfpro">SF Pro</option>
+                  <option value="helvetica">Helvetica</option>
+                  <option value="times">Times</option>
+                  <option value="songti">宋体 (Songti)</option>
+                  <option value="kaiti">楷体 (Kaiti)</option>
+                  <option value="heiti">黑体 (Heiti)</option>
+                  <option value="fangsong">仿宋 (FangSong)</option>
+                </select>
+              </div>
+              <div>
+                <label>字号</label>
+                <input type="number" name="text_font_size" id="textFontSize" value="72" min="10" max="360" form="form" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>字体颜色</label>
+                <input type="color" name="text_font_color" id="textFontColor" value="#0f172a" form="form" />
+              </div>
+              <div>
+                <label class="check-item" style="margin-top:28px">
+                  <input type="checkbox" name="text_font_bold" id="textFontBold" form="form" />
+                  加粗
+                </label>
+              </div>
+            </div>
+          </div>
+
+        <div class="block-title" style="margin-top:4px">显示页码</div>
+        <div class="sub-card">
+          <label>页码</label>
+          <select name="page_number_position" id="pageNumberMode" form="form">
+            <option value="none" selected>不显示</option>
+            <option value="top_left">显示在左上</option>
+            <option value="top_right">显示在右上</option>
+            <option value="bottom_left">显示在左下</option>
+            <option value="bottom_right">显示在右下</option>
+          </select>
+          <input type="hidden" name="page_number_enabled" id="pageNumberEnabled" value="0" form="form" />
+        </div>
+
+        <div class="block-title" style="margin-top:4px">显示图片信息</div>
+        <div class="sub-card">
+          <div class="check-row" style="margin-top:6px">
+            <label class="check-item">
+              <input type="checkbox" name="overlay_show_filename" form="form" />
+              显示文件名
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="overlay_show_note" form="form" />
+              显示备注
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="overlay_as_tile" form="form" />
+              文本框占据独立网格
+            </label>
+          </div>
+          <div class="row">
+            <div>
+              <label>字体</label>
+              <select name="overlay_font_family" form="form">
+                <option value="pingfang">PingFang</option>
+                <option value="sfpro">SF Pro</option>
+                <option value="helvetica">Helvetica</option>
+                <option value="times">Times</option>
+                <option value="songti">宋体 (Songti)</option>
+                <option value="kaiti">楷体 (Kaiti)</option>
+                <option value="heiti">黑体 (Heiti)</option>
+                <option value="fangsong">仿宋 (FangSong)</option>
+              </select>
+            </div>
+            <div>
+              <label>字号</label>
+              <input type="number" name="overlay_font_size" value="18" min="10" max="120" form="form" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>文字颜色</label>
+              <input type="color" name="overlay_font_color" value="#0f172a" form="form" />
+            </div>
+            <div>
+              <label>文本框背景色</label>
+              <input type="color" name="overlay_box_bg_color" value="#ffffff" form="form" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>文本框背景透明度（0-100）</label>
+              <input type="number" name="overlay_box_bg_opacity" value="70" min="0" max="100" form="form" />
+            </div>
+            <div>
+              <label>位置</label>
+              <select name="overlay_position" form="form">
+                <option value="bottom">下</option>
+                <option value="top">上</option>
+                <option value="left">左</option>
+                <option value="right">右</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev" type="button" aria-label="上一张">‹</button>
+    <button class="lightbox-nav lightbox-next" id="lightboxNext" type="button" aria-label="下一张">›</button>
+    <a class="lightbox-download" id="lightboxDownload" href="#" download>下载</a>
+    <button class="lightbox-close" id="lightboxClose" type="button">关闭</button>
+    <img id="lightboxImage" alt="preview large" />
+  </div>
+
+  <script>
+    const form = document.getElementById('form');
+    const preview = document.getElementById('preview');
+    const statusEl = document.getElementById('status');
+    const actions = document.getElementById('actions');
+    const visualStylePanel = document.getElementById('visualStylePanel');
+    const transparentBg = document.getElementById('transparentBg');
+    const bgInput = document.querySelector('input[name="bg"]');
+    const svgFiles = document.getElementById('svgFiles');
+    const svgFolder = document.getElementById('svgFolder');
+    const pickAssetsBtn = document.getElementById('pickAssetsBtn');
+    const uploadMenu = document.getElementById('uploadMenu');
+    const pickFilesBtn = document.getElementById('pickFilesBtn');
+    const pickFolderBtn = document.getElementById('pickFolderBtn');
+    const uploadSummary = document.getElementById('uploadSummary');
+    const svgDir = document.getElementById('svgDir');
+    const manageFilesBtn = document.getElementById('manageFilesBtn');
+    const textFontFamily = document.getElementById('textFontFamily');
+    const textFontSize = document.getElementById('textFontSize');
+    const textFontColor = document.getElementById('textFontColor');
+    const textFontBold = document.getElementById('textFontBold');
+    const textStyleFields = document.getElementById('textStyleFields');
+    const contentMode = document.getElementById('contentMode');
+    const mediaModeFields = document.getElementById('mediaModeFields');
+    const textModeFields = document.getElementById('textModeFields');
+    const textContent = document.getElementById('textContent');
+    const generateBtn = document.getElementById('generateBtn');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const sampleMeta = document.getElementById('sampleMeta');
+    const pageNumberMode = document.getElementById('pageNumberMode');
+    const pageNumberEnabled = document.getElementById('pageNumberEnabled');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const refreshMode = document.getElementById('refreshMode');
+    const colsMin = document.getElementById('colsMin');
+    const colsMax = document.getElementById('colsMax');
+    const colsMinValue = document.getElementById('colsMinValue');
+    const colsMaxValue = document.getElementById('colsMaxValue');
+    const colsValueInput = document.getElementById('colsValueInput');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxClose = document.getElementById('lightboxClose');
+    const lightboxDownload = document.getElementById('lightboxDownload');
+    const lightboxPrev = document.getElementById('lightboxPrev');
+    const lightboxNext = document.getElementById('lightboxNext');
+    const MORE_VARIANTS_COUNT = 8;
+    let renderedVariants = [];
+    let currentLightboxIndex = -1;
+    let isGenerating = false;
+    let samplePlan = null;
+    let selectedDirFileCount = null;
+
+    transparentBg.addEventListener('change', () => {
+      bgInput.disabled = transparentBg.checked;
+      bgInput.style.opacity = transparentBg.checked ? '0.45' : '1';
+    });
+
+    function getContentMode() {
+      return form.querySelector('input[name="content_mode"]:checked')?.value || 'media';
+    }
+
+    function syncModeUI() {
+      const mode = getContentMode();
+      mediaModeFields.style.display = mode === 'media' ? 'block' : 'none';
+      textModeFields.style.display = mode === 'text' ? 'block' : 'none';
+      const mediaDisabled = mode !== 'media';
+      svgFiles.disabled = mediaDisabled;
+      svgFolder.disabled = mediaDisabled;
+      svgDir.disabled = mediaDisabled;
+      textStyleFields.style.display = mode === 'text' ? 'block' : 'none';
+      textContent.disabled = mode !== 'text';
+      textFontFamily.disabled = mode !== 'text';
+      textFontSize.disabled = mode !== 'text';
+      textFontColor.disabled = mode !== 'text';
+      textFontBold.disabled = mode !== 'text';
+      syncGenerateButtonState();
+    }
+
+    function syncPageNumberMode() {
+      if (!pageNumberMode || !pageNumberEnabled) return;
+      const mode = pageNumberMode.value;
+      pageNumberEnabled.value = mode === 'none' ? '0' : '1';
+    }
+
+    contentMode.addEventListener('change', syncModeUI);
+    syncModeUI();
+    pageNumberMode.addEventListener('change', syncPageNumberMode);
+    syncPageNumberMode();
+
+    async function loadAssetDirs() {
+      try {
+        const res = await fetch('/api/assets-dirs');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const dirs = Array.isArray(json.dirs) ? json.dirs : [];
+        svgDir.innerHTML = '<option value="">仅使用上传文件</option>';
+        for (const dir of dirs) {
+          const opt = document.createElement('option');
+          opt.value = dir;
+          opt.textContent = dir;
+          svgDir.appendChild(opt);
+        }
+      } catch (_) {
+        statusEl.textContent = '目录列表加载失败，可直接上传文件生成。';
+      }
+    }
+
+    loadAssetDirs();
+
+    function getColsRange() {
+      const minCols = Number.parseInt(colsMin.value || '4', 10);
+      const maxCols = Number.parseInt(colsMax.value || '10', 10);
+      return {
+        minCols: Math.max(1, Math.min(20, Math.min(minCols, maxCols))),
+        maxCols: Math.max(1, Math.min(20, Math.max(minCols, maxCols))),
+      };
+    }
+
+    function syncColsRangeUI(changedKey) {
+      let minCols = Number.parseInt(colsMin.value || '4', 10);
+      let maxCols = Number.parseInt(colsMax.value || '10', 10);
+      minCols = Math.max(1, Math.min(20, minCols));
+      maxCols = Math.max(1, Math.min(20, maxCols));
+      if (minCols > maxCols) {
+        if (changedKey === 'min') {
+          maxCols = minCols;
+        } else {
+          minCols = maxCols;
+        }
+      }
+      colsMin.value = String(minCols);
+      colsMax.value = String(maxCols);
+      colsMinValue.textContent = String(minCols);
+      colsMaxValue.textContent = String(maxCols);
+      colsValueInput.value = String(minCols);
+    }
+
+    colsMin.addEventListener('input', () => syncColsRangeUI('min'));
+    colsMax.addEventListener('input', () => syncColsRangeUI('max'));
+    syncColsRangeUI();
+    svgFiles.addEventListener('change', () => { updateUploadSummary(); invalidateSamplePlan(); syncGenerateButtonState(); });
+    svgFolder.addEventListener('change', () => { updateUploadSummary(); invalidateSamplePlan(); syncGenerateButtonState(); });
+    svgDir.addEventListener('change', async () => {
+      await refreshSelectedDirCount();
+      updateUploadSummary();
+      invalidateSamplePlan();
+      syncGenerateButtonState();
+    });
+    textContent.addEventListener('input', () => { invalidateSamplePlan(); syncGenerateButtonState(); });
+    form.addEventListener('change', (e) => {
+      invalidateSamplePlan();
+      syncGenerateButtonState();
+    });
+    visualStylePanel.addEventListener('change', () => {
+      invalidateSamplePlan();
+      syncGenerateButtonState();
+    });
+    syncGenerateButtonState();
+    updateUploadSummary();
+    function closeUploadMenu() {
+      uploadMenu.classList.remove('open');
+    }
+    pickAssetsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      uploadMenu.classList.toggle('open');
+    });
+    pickFilesBtn.addEventListener('click', () => {
+      closeUploadMenu();
+      svgFiles.click();
+    });
+    pickFolderBtn.addEventListener('click', () => {
+      closeUploadMenu();
+      svgFolder.click();
+    });
+    document.addEventListener('click', (e) => {
+      const targetEl = e.target instanceof Element ? e.target : null;
+      if (!targetEl) return;
+      if (!uploadMenu.contains(targetEl) && !pickAssetsBtn.contains(targetEl)) {
+        closeUploadMenu();
+      }
+    });
+
+    manageFilesBtn.addEventListener('click', async () => {
+      let files = getAllFiles().map((file) => file.name);
+      const selectedDir = (svgDir.value || '').trim();
+      if (files.length === 0 && selectedDir) {
+        try {
+          const res = await fetch(`/api/assets-files?dir=${encodeURIComponent(selectedDir)}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          files = Array.isArray(json.files) ? json.files : [];
+        } catch (_) {
+          statusEl.textContent = '读取目录文件列表失败，请重试。';
+          return;
+        }
+      }
+      const payload = {
+        files,
+        directory: selectedDir,
+        updatedAt: Date.now(),
+      };
+      try {
+        const res = await fetch('/api/manage-selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.location.href = '/manage-files';
+      } catch (_) {
+        statusEl.textContent = '保存管理列表失败，请重试。';
+      }
+    });
+
+    function getAllFiles() {
+      return [...(svgFiles.files || []), ...(svgFolder.files || [])];
+    }
+
+    async function refreshSelectedDirCount() {
+      const selectedDir = (svgDir.value || '').trim();
+      if (!selectedDir) {
+        selectedDirFileCount = null;
+        return;
+      }
+      try {
+        const res = await fetch(`/api/assets-files?dir=${encodeURIComponent(selectedDir)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const files = Array.isArray(json.files) ? json.files : [];
+        selectedDirFileCount = files.length;
+      } catch (_) {
+        selectedDirFileCount = null;
+      }
+    }
+
+    function updateUploadSummary() {
+      const fileCount = (svgFiles.files || []).length;
+      const folderCount = (svgFolder.files || []).length;
+      const localTotal = fileCount + folderCount;
+      const dirSelected = (svgDir.value || '').trim().length > 0;
+      const dirCount = dirSelected ? selectedDirFileCount : null;
+      const total = localTotal + (dirCount || 0);
+      if (localTotal <= 0 && !dirSelected) {
+        uploadSummary.textContent = '未选择资源';
+        return;
+      }
+      if (dirSelected) {
+        const dirText = Number.isFinite(dirCount) ? String(dirCount) : '统计中';
+        uploadSummary.textContent = `已选择 ${total} 个文件（本地：${localTotal}，目录：${dirText}）`;
+        return;
+      }
+      uploadSummary.textContent = `已选择 ${localTotal} 个文件（文件：${fileCount}，文件夹来源：${folderCount}）`;
+    }
+
+    function hasValidSource() {
+      const mode = getContentMode();
+      if (mode === 'media') {
+        const fileCount = getAllFiles().length;
+        const dirPath = (svgDir.value || '').trim();
+        return !(fileCount === 0 && !dirPath);
+      }
+      return (textContent.value || '').trim().length > 0;
+    }
+
+    function invalidateSamplePlan() {
+      samplePlan = null;
+      sampleMeta.textContent = '';
+    }
+
+    function syncGenerateButtonState() {
+      const validSource = hasValidSource();
+      if (isGenerating) {
+        return;
+      }
+      if (!validSource) {
+        generateBtn.disabled = true;
+        sampleBtn.disabled = true;
+        generateBtn.textContent = '生成单张';
+        return;
+      }
+        generateBtn.disabled = false;
+        sampleBtn.disabled = false;
+      generateBtn.textContent = '生成单张';
+    }
+
+    function buildBatchConfigs(randomize) {
+      const { minCols, maxCols } = getColsRange();
+      const configs = [];
+      for (let col = minCols; col <= maxCols; col += 1) {
+        configs.push({ randomize, colsOffset: col - minCols });
+      }
+      return configs;
+    }
+
+    function buildMoreConfigs(cols, count = MORE_VARIANTS_COUNT) {
+      const { minCols } = getColsRange();
+      const safeCols = Math.max(1, Math.min(20, cols));
+      const offset = safeCols - minCols;
+      const configs = [];
+      for (let i = 0; i < count; i += 1) {
+        configs.push({ randomize: true, colsOffset: offset });
+      }
+      return configs;
+    }
+
+    function buildBatchRequestData(configs) {
+      const data = new FormData();
+      const source = new FormData(form);
+      for (const [key, value] of source.entries()) {
+        if (!(value instanceof File)) data.append(key, value);
+      }
+      const { minCols } = getColsRange();
+      data.set('cols', String(minCols));
+      const mode = getContentMode();
+      if (mode === 'media') {
+        const files = getAllFiles();
+        for (const file of files) data.append('svgs', file, file.name);
+      } else {
+        data.set('svg_dir', '');
+      }
+      data.append('variant_configs', JSON.stringify(configs));
+      return data;
+    }
+
+    function getSuggestedPerWallCount() {
+      const { minCols } = getColsRange();
+      return Math.max(1, minCols * minCols);
+    }
+
+    function buildSourceRequestData() {
+      const data = new FormData();
+      const source = new FormData(form);
+      for (const [key, value] of source.entries()) {
+        if (!(value instanceof File)) data.append(key, value);
+      }
+      const { minCols } = getColsRange();
+      data.set('cols', String(minCols));
+      const mode = getContentMode();
+      if (mode === 'media') {
+        const files = getAllFiles();
+        for (const file of files) data.append('svgs', file, file.name);
+      } else {
+        data.set('svg_dir', '');
+      }
+      return data;
+    }
+
+    function buildVariantName(item, idx) {
+      const customName = typeof item?.file_name === 'string' ? item.file_name.trim() : '';
+      if (customName) return customName;
+      const safeCols = Number.isFinite(Number(item?.cols)) ? Number(item.cols) : 0;
+      return safeCols > 0
+        ? `方案${idx + 1}_列数${safeCols}.png`
+        : `方案${idx + 1}.png`;
+    }
+
+    function withDownloadFilename(url, filename) {
+      try {
+        const u = new URL(url, window.location.origin);
+        u.searchParams.set('filename', filename);
+        return u.pathname + u.search;
+      } catch (_) {
+        return url;
+      }
+    }
+
+    function renderBatch(variants, options = {}) {
+      const showMore = options.showMore !== false;
+      const cards = variants.map((item, idx) => `
+        <div class="variant-card">
+          <div class="variant-title">${item.title || `方案 ${idx + 1}（列数 ${item.cols}）`}</div>
+          <img src="${item.preview_url}?t=${Date.now()}-${idx}" alt="variant-${idx + 1}" data-variant-index="${idx}" />
+          <div class="variant-footer">
+            <a class="variant-link" href="${withDownloadFilename(item.download_url, buildVariantName(item, idx))}" download="${buildVariantName(item, idx)}">下载</a>
+            ${showMore ? `<button class="variant-more-btn" type="button" data-cols="${item.cols}" data-source-count="${item.source_count || ''}" data-total-count="${item.total_count || ''}" data-estimated-walls="${item.estimated_walls || ''}">${
+              samplePlan
+                ? `更多（按该方案生成，共 ${item.estimated_walls || samplePlan.estimatedWalls} 张）`
+                : `更多（${MORE_VARIANTS_COUNT} 张）`
+            }</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+      preview.innerHTML = `<div class="preview-grid">${cards}</div>`;
+      actions.innerHTML = '';
+      const size = variants[0]?.size;
+      statusEl.textContent = `完成：连续生成 ${variants.length} 种排版，分辨率 ${size.width}×${size.height}`;
+    }
+
+    function getLightboxSources() {
+      if (renderedVariants.length > 0) {
+        return renderedVariants.map((item, idx) => ({
+          previewUrl: item.preview_url,
+          downloadUrl: withDownloadFilename(item.download_url, buildVariantName(item, idx)),
+          filename: buildVariantName(item, idx),
+        }));
+      }
+      return Array.from(preview.querySelectorAll('img')).map((img) => ({
+        previewUrl: img.src,
+        downloadUrl: img.src,
+        filename: 'wallpaper.png',
+      }));
+    }
+
+    function openLightboxByIndex(index) {
+      const sources = getLightboxSources();
+      if (sources.length === 0) return;
+      const safeIndex = ((index % sources.length) + sources.length) % sources.length;
+      currentLightboxIndex = safeIndex;
+      const current = sources[safeIndex];
+      lightboxImage.src = current.previewUrl;
+      lightboxDownload.href = current.downloadUrl;
+      lightboxDownload.download = current.filename || '';
+      lightbox.classList.add('open');
+    }
+
+    function stepLightbox(delta) {
+      if (!lightbox.classList.contains('open')) return;
+      openLightboxByIndex(currentLightboxIndex + delta);
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      lightboxImage.src = '';
+      currentLightboxIndex = -1;
+    }
+
+    preview.addEventListener('click', (e) => {
+      const targetEl = e.target instanceof Element ? e.target : null;
+      const moreBtn = targetEl ? targetEl.closest('.variant-more-btn') : null;
+      if (moreBtn instanceof HTMLButtonElement) {
+        if (generateBtn.disabled) return;
+        const cols = Number.parseInt(moreBtn.dataset.cols || '0', 10);
+        if (!Number.isFinite(cols) || cols < 1) return;
+        if (samplePlan) {
+          const sourceCount = Number.parseInt(moreBtn.dataset.sourceCount || '0', 10);
+          const totalCount = Number.parseInt(moreBtn.dataset.totalCount || '0', 10);
+          const estimatedWalls = Number.parseInt(moreBtn.dataset.estimatedWalls || '0', 10);
+          runSplitGenerationBySample(cols, {
+            perWallCount: Number.isFinite(sourceCount) && sourceCount > 0 ? sourceCount : samplePlan.perWallCount,
+            totalCount: Number.isFinite(totalCount) && totalCount > 0 ? totalCount : samplePlan.totalCount,
+            estimatedWalls: Number.isFinite(estimatedWalls) && estimatedWalls > 0 ? estimatedWalls : samplePlan.estimatedWalls,
+          });
+          return;
+        }
+        runBatchGeneration(buildMoreConfigs(cols), { title: `列数 ${cols} 的随机方案` });
+        return;
+      }
+      const target = e.target;
+      if (!(target instanceof HTMLImageElement)) return;
+      const index = Number.parseInt(target.dataset.variantIndex || '-1', 10);
+      if (Number.isFinite(index) && index >= 0) {
+        openLightboxByIndex(index);
+        return;
+      }
+      lightboxImage.src = target.src;
+      lightboxDownload.href = target.src;
+      lightboxDownload.download = '';
+      lightbox.classList.add('open');
+    });
+
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightboxPrev.addEventListener('click', () => stepLightbox(-1));
+    lightboxNext.addEventListener('click', () => stepLightbox(1));
+    document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('open')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') stepLightbox(-1);
+      if (e.key === 'ArrowRight') stepLightbox(1);
+    });
+
+    function setGenerating(disabled) {
+      isGenerating = disabled;
+      if (disabled) {
+        generateBtn.disabled = true;
+        sampleBtn.disabled = true;
+        downloadAllBtn.disabled = true;
+        return;
+      }
+      downloadAllBtn.disabled = false;
+      syncGenerateButtonState();
+    }
+
+    async function runBatchGeneration(configs, { title = '连续生成' } = {}) {
+      const allFiles = getAllFiles();
+      const dirPath = (svgDir.value || '').trim();
+      const mode = getContentMode();
+      if (mode === 'media') {
+        if (allFiles.length === 0 && !dirPath) {
+          statusEl.textContent = '请先选择 SVG/PNG/JPEG/WebP/AVIF 文件/文件夹，或选择目录。';
+          return;
+        }
+      } else if ((textContent.value || '').trim().length === 0) {
+        statusEl.textContent = '文本模式下请先输入内容（每行一个文本项）。';
+        return;
+      }
+
+      setGenerating(true);
+      actions.innerHTML = '';
+      statusEl.textContent = `正在${title} ${configs.length} 张（1/${configs.length}）...`;
+      const newVariants = [];
+      try {
+        preview.innerHTML = '<div class="preview-grid"></div>';
+        const data = buildBatchRequestData(configs);
+        const response = await fetch('/generate_batch_stream', { method: 'POST', body: data });
+        if (!response.ok || !response.body) {
+          let msg = `请求失败（${response.status}）`;
+          try {
+            const errJson = await response.json();
+            msg = errJson.error || msg;
+          } catch (_) {}
+          throw new Error(msg);
+        }
+
+        const decoder = new TextDecoder();
+        const reader = response.body.getReader();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const text = line.trim();
+            if (!text) continue;
+            const event = JSON.parse(text);
+            if (event.type === 'error') throw new Error(event.error || '生成失败');
+            if (event.type === 'variant') {
+              newVariants.push(event);
+              const ordered = [...newVariants].sort((a, b) => a.index - b.index);
+              renderBatch(ordered);
+              statusEl.textContent = `已完成 ${ordered.length}/${configs.length} 张，正在继续...`;
+            }
+          }
+        }
+        if (buffer.trim()) {
+          const event = JSON.parse(buffer.trim());
+          if (event.type === 'error') throw new Error(event.error || '生成失败');
+          if (event.type === 'variant') {
+            newVariants.push(event);
+          }
+        }
+
+        const ordered = [...newVariants].sort((a, b) => a.index - b.index);
+        if (ordered.length > 0) {
+          renderedVariants = ordered;
+          renderBatch(renderedVariants);
+          const size = renderedVariants[0]?.size;
+          statusEl.textContent = `完成：当前共 ${renderedVariants.length} 种排版，分辨率 ${size.width}×${size.height}`;
+        } else {
+          statusEl.textContent = '未收到可用排版结果。';
+        }
+      } catch (err) {
+        statusEl.textContent = `错误：${err.message}`;
+      } finally {
+        setGenerating(false);
+      }
+    }
+
+    async function runSingleGeneration() {
+      if (!hasValidSource()) {
+        statusEl.textContent = '请先准备图片或文本内容。';
+        return;
+      }
+      const randomize = getRefreshRandomize();
+      const configs = buildBatchConfigs(randomize);
+      samplePlan = null;
+      sampleMeta.textContent = '正在按列数范围逐一生成单张方案（每个方案包含全部图片）...';
+      await runBatchGeneration(configs, { title: '按列数范围生成单张方案' });
+      if (renderedVariants.length > 0) {
+        sampleMeta.textContent = `已生成 ${renderedVariants.length} 个单张方案（每个方案包含全部图片）。`;
+      }
+    }
+
+    function getRefreshRandomize() {
+      const refresh = form.querySelector('input[name="refresh_mode"]:checked')?.value || 'random';
+      return refresh === 'random';
+    }
+
+    async function runSampleGeneration() {
+      if (!hasValidSource()) {
+        statusEl.textContent = '请先准备图片或文本内容。';
+        return;
+      }
+      setGenerating(true);
+      actions.innerHTML = '';
+      preview.innerHTML = '<div class="preview-grid"></div>';
+      const randomize = getRefreshRandomize();
+      const { minCols, maxCols } = getColsRange();
+      const configs = buildBatchConfigs(randomize);
+      const newVariants = [];
+      samplePlan = {
+        randomize,
+        perWallCount: getSuggestedPerWallCount(),
+        totalCount: 0,
+        estimatedWalls: 0,
+      };
+
+      try {
+        statusEl.textContent = `正在按列数范围 ${minCols}-${maxCols} 生成多张方案样例...`;
+        const data = buildBatchRequestData(configs);
+        data.set('randomize', randomize ? '1' : '0');
+        const response = await fetch('/generate_sample_stream', { method: 'POST', body: data });
+        if (!response.ok || !response.body) {
+          let msg = `请求失败（${response.status}）`;
+          try {
+            const errJson = await response.json();
+            msg = errJson.error || msg;
+          } catch (_) {}
+          throw new Error(msg);
+        }
+
+        const acceptVariant = (event) => {
+          const idx = Number.parseInt(String(event.index ?? newVariants.length), 10);
+          const safeIndex = Number.isFinite(idx) ? idx : newVariants.length;
+          const colsValue = Number.parseInt(String(event.cols || 0), 10);
+          const safeCols = Number.isFinite(colsValue) && colsValue > 0 ? colsValue : minCols + safeIndex;
+          newVariants.push({
+            ...event,
+            cols: safeCols,
+            _sortKey: safeIndex,
+            title: `列数 ${safeCols} · 样例`,
+            file_name: `列数${safeCols}_样例.png`,
+          });
+          const orderedNow = [...newVariants].sort((a, b) => (a._sortKey || 0) - (b._sortKey || 0));
+          renderBatch(orderedNow);
+          statusEl.textContent = `已完成 ${orderedNow.length}/${configs.length} 个方案，正在继续...`;
+        };
+
+        const decoder = new TextDecoder();
+        const reader = response.body.getReader();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const text = line.trim();
+            if (!text) continue;
+            const event = JSON.parse(text);
+            if (event.type === 'error') throw new Error(event.error || '生成失败');
+            if (event.type === 'variant') acceptVariant(event);
+          }
+        }
+        if (buffer.trim()) {
+          const event = JSON.parse(buffer.trim());
+          if (event.type === 'error') throw new Error(event.error || '生成失败');
+          if (event.type === 'variant') acceptVariant(event);
+        }
+
+        const ordered = [...newVariants].sort((a, b) => (a._sortKey || 0) - (b._sortKey || 0));
+        if (ordered.length === 0) {
+          throw new Error('未收到可用样例结果');
+        }
+        renderedVariants = ordered;
+        const fallbackTotal = Number.parseInt(String(renderedVariants[0]?.total_count || 0), 10) || 0;
+        const fallbackPerWall = Number.parseInt(String(renderedVariants[0]?.source_count || getSuggestedPerWallCount()), 10) || getSuggestedPerWallCount();
+        const estimatedTotal = renderedVariants.reduce((sum, item) => {
+          const walls = Number.parseInt(String(item.estimated_walls || 0), 10);
+          return sum + (Number.isFinite(walls) && walls > 0 ? walls : 0);
+        }, 0);
+        samplePlan = {
+          randomize,
+          perWallCount: fallbackPerWall,
+          totalCount: fallbackTotal,
+          estimatedWalls: estimatedTotal > 0 ? estimatedTotal : Math.max(1, Math.ceil(fallbackTotal / Math.max(1, fallbackPerWall))),
+        };
+        renderBatch(renderedVariants);
+        sampleMeta.textContent = `已按列数范围 ${minCols}-${maxCols} 生成 ${renderedVariants.length} 个方案，点击右下角“更多”可按该方案生成剩余图片。`;
+        statusEl.textContent = `完成：多张模式已生成 ${renderedVariants.length} 个列数方案。`;
+      } catch (err) {
+        statusEl.textContent = `错误：${err.message}`;
+      } finally {
+        setGenerating(false);
+      }
+    }
+
+    async function runSplitGenerationBySample(preferredCols = null, planOverride = null) {
+      if (!samplePlan) {
+        statusEl.textContent = '请先生成样例并确认。';
+        return;
+      }
+      if (!hasValidSource()) {
+        statusEl.textContent = '请先准备图片或文本内容。';
+        return;
+      }
+      setGenerating(true);
+      actions.innerHTML = '';
+      const effectivePerWall = planOverride?.perWallCount || samplePlan.perWallCount;
+      const effectiveTotal = planOverride?.totalCount || samplePlan.totalCount;
+      const effectiveExpected = planOverride?.estimatedWalls || Math.max(1, Math.ceil(effectiveTotal / effectivePerWall));
+      const colsText = Number.isFinite(preferredCols) && preferredCols > 0 ? `，列数 ${preferredCols}` : '';
+      statusEl.textContent = `正在按样例生成全部（预计 ${effectiveExpected} 张${colsText}）...`;
+      const newVariants = [];
+      try {
+        preview.innerHTML = '<div class="preview-grid"></div>';
+        const data = buildSourceRequestData();
+        if (Number.isFinite(preferredCols) && preferredCols > 0) {
+          data.set('cols', String(preferredCols));
+        }
+        data.set('per_wall_count', String(effectivePerWall));
+        data.set('randomize', samplePlan.randomize ? '1' : '0');
+        const response = await fetch('/generate_split_stream', { method: 'POST', body: data });
+        if (!response.ok || !response.body) {
+          let msg = `请求失败（${response.status}）`;
+          try {
+            const errJson = await response.json();
+            msg = errJson.error || msg;
+          } catch (_) {}
+          throw new Error(msg);
+        }
+
+        const decoder = new TextDecoder();
+        const reader = response.body.getReader();
+        let buffer = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const text = line.trim();
+            if (!text) continue;
+            const event = JSON.parse(text);
+            if (event.type === 'error') throw new Error(event.error || '生成失败');
+            if (event.type === 'variant') {
+              const pageIndex = Number.parseInt(String(event.index || 0), 10) || 0;
+              const totalCount = Number.parseInt(String(event.total_count || effectiveTotal), 10) || effectiveTotal;
+              const eventPerWall = Number.parseInt(String(event.per_wall_count || effectivePerWall), 10) || effectivePerWall;
+              const totalPages = Math.max(1, Math.ceil(totalCount / Math.max(1, eventPerWall)));
+              const colsValue = Number.parseInt(String(event.cols || preferredCols || 0), 10) || Number.parseInt(String(preferredCols || 0), 10) || 0;
+              newVariants.push({
+                ...event,
+                cols: colsValue > 0 ? colsValue : event.cols,
+                title: colsValue > 0 ? `列数 ${colsValue} · 第 ${pageIndex + 1}/${totalPages} 页` : `第 ${pageIndex + 1}/${totalPages} 页`,
+                file_name: colsValue > 0 ? `列数${colsValue}_第${pageIndex + 1}页.png` : `第${pageIndex + 1}页.png`,
+              });
+              const ordered = [...newVariants].sort((a, b) => a.index - b.index);
+              renderBatch(ordered, { showMore: false });
+              statusEl.textContent = `已完成 ${ordered.length} 张，正在继续...`;
+            }
+          }
+        }
+        if (buffer.trim()) {
+          const event = JSON.parse(buffer.trim());
+          if (event.type === 'error') throw new Error(event.error || '生成失败');
+          if (event.type === 'variant') {
+            const pageIndex = Number.parseInt(String(event.index || 0), 10) || 0;
+            const totalCount = Number.parseInt(String(event.total_count || effectiveTotal), 10) || effectiveTotal;
+            const eventPerWall = Number.parseInt(String(event.per_wall_count || effectivePerWall), 10) || effectivePerWall;
+            const totalPages = Math.max(1, Math.ceil(totalCount / Math.max(1, eventPerWall)));
+            const colsValue = Number.parseInt(String(event.cols || preferredCols || 0), 10) || Number.parseInt(String(preferredCols || 0), 10) || 0;
+            newVariants.push({
+              ...event,
+              cols: colsValue > 0 ? colsValue : event.cols,
+              title: colsValue > 0 ? `列数 ${colsValue} · 第 ${pageIndex + 1}/${totalPages} 页` : `第 ${pageIndex + 1}/${totalPages} 页`,
+              file_name: colsValue > 0 ? `列数${colsValue}_第${pageIndex + 1}页.png` : `第${pageIndex + 1}页.png`,
+            });
+          }
+        }
+
+        const ordered = [...newVariants].sort((a, b) => a.index - b.index);
+        if (ordered.length > 0) {
+          renderedVariants = ordered;
+          renderBatch(renderedVariants, { showMore: false });
+          const size = renderedVariants[0]?.size;
+          statusEl.textContent = `完成：按样例生成 ${ordered.length} 张，分辨率 ${size.width}×${size.height}`;
+        } else {
+          statusEl.textContent = '未收到可用结果。';
+        }
+      } catch (err) {
+        statusEl.textContent = `错误：${err.message}`;
+      } finally {
+        setGenerating(false);
+      }
+    }
+
+    generateBtn.addEventListener('click', runSingleGeneration);
+
+    sampleBtn.addEventListener('click', runSampleGeneration);
+
+    refreshBtn.addEventListener('click', () => {
+      if (generateBtn.disabled) return;
+      generateBtn.click();
+    });
+
+    downloadAllBtn.addEventListener('click', async () => {
+      const downloads = renderedVariants.length > 0
+        ? renderedVariants.map((item, idx) => ({
+          url: withDownloadFilename(item.download_url, buildVariantName(item, idx)),
+          filename: buildVariantName(item, idx),
+        }))
+        : Array.from(preview.querySelectorAll('.variant-link'))
+          .map((a) => ({ url: a.getAttribute('href'), filename: a.getAttribute('download') || '' }))
+          .filter((x) => Boolean(x.url));
+      if (downloads.length === 0) {
+        statusEl.textContent = '当前没有可下载的方案。';
+        return;
+      }
+      for (const item of downloads) {
+        const link = document.createElement('a');
+        link.href = item.url;
+        link.download = item.filename || '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+      statusEl.textContent = `已触发下载 ${downloads.length} 张图片。`;
+    });
+  </script>
+</body>
+</html>

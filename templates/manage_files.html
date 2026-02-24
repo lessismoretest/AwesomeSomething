@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文件管理</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --panel: #ffffff;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --accent: #0071e3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-block;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(120deg, #0a84ff, var(--accent));
+    }
+    .list-wrap {
+      margin-top: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .list-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e5ea;
+      background: #fafafa;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      color: var(--muted);
+      background: #fafafa;
+      padding: 8px 12px;
+      border-bottom: 1px solid #f2f2f7;
+    }
+    thead th:first-child { width: 120px; }
+    thead th:nth-child(3) { width: 90px; }
+    thead th:nth-child(4) { width: 260px; }
+    tbody {
+      display: block;
+      max-height: 68vh;
+      overflow: auto;
+      width: 100%;
+    }
+    thead, tbody tr {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+    tbody td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f2f2f7;
+      font-size: 14px;
+      vertical-align: middle;
+      word-break: break-all;
+    }
+    .note-input {
+      width: 100%;
+      border: 1px solid #d2d2d7;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: var(--text);
+      background: #fff;
+    }
+    .note-input:focus {
+      outline: none;
+      border-color: rgba(0, 113, 227, 0.45);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+    }
+    .note-textarea {
+      min-height: 68px;
+      resize: vertical;
+      line-height: 1.4;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .name-input {
+      width: 100%;
+      border: 1px solid #d2d2d7;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: var(--text);
+      background: #fff;
+    }
+    .name-input:focus {
+      outline: none;
+      border-color: rgba(0, 113, 227, 0.45);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+    }
+    .thumb {
+      width: 88px;
+      height: 64px;
+      border-radius: 8px;
+      border: 1px solid #e5e5ea;
+      background: #f5f5f7;
+      object-fit: contain;
+      object-position: center;
+      cursor: zoom-in;
+      display: block;
+    }
+    .thumb-placeholder {
+      width: 88px;
+      height: 64px;
+      border-radius: 8px;
+      border: 1px solid #e5e5ea;
+      background: #f5f5f7;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+    }
+    .empty {
+      padding: 16px 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 12, 17, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 24px;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-width: min(92vw, 1500px);
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1d1d1f;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>已选文件管理</h1>
+    <div class="muted" id="metaText">读取中...</div>
+    <div class="actions">
+      <a class="btn" href="/">返回生成器</a>
+    </div>
+    <div class="list-wrap">
+      <div class="list-head" id="listHead">文件列表</div>
+      <table>
+        <thead>
+          <tr>
+            <th>预览</th>
+            <th>文件名</th>
+            <th>扩展名</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody id="fileList"></tbody>
+      </table>
+      <div class="empty" id="emptyText" style="display:none">当前没有已选文件，请返回上一页先选择文件。</div>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose" type="button">关闭</button>
+    <img id="lightboxImage" alt="preview large" />
+  </div>
+
+  <script>
+    const fileList = document.getElementById('fileList');
+    const listHead = document.getElementById('listHead');
+    const emptyText = document.getElementById('emptyText');
+    const metaText = document.getElementById('metaText');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxClose = document.getElementById('lightboxClose');
+    let manageState = {
+      selection: { files: [], directory: '', updatedAt: 0 },
+      notes: {},
+    };
+    const noteSaveTimers = new Map();
+
+    function splitFileParts(path) {
+      const slashIndex = path.lastIndexOf('/');
+      const parent = slashIndex >= 0 ? path.slice(0, slashIndex + 1) : '';
+      const fileName = slashIndex >= 0 ? path.slice(slashIndex + 1) : path;
+      const dotIndex = fileName.lastIndexOf('.');
+      if (dotIndex <= 0) {
+        return { parent, baseName: fileName, extWithDot: '', extText: '-' };
+      }
+      const baseName = fileName.slice(0, dotIndex);
+      const extWithDot = fileName.slice(dotIndex);
+      const extText = fileName.slice(dotIndex + 1);
+      return { parent, baseName, extWithDot, extText };
+    }
+
+    async function loadManageState() {
+      try {
+        const res = await fetch('/api/manage-state');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        return {
+          selection: {
+            files: Array.isArray(json?.selection?.files) ? json.selection.files : [],
+            directory: typeof json?.selection?.directory === 'string' ? json.selection.directory : '',
+            updatedAt: Number.isFinite(json?.selection?.updatedAt) ? json.selection.updatedAt : 0,
+          },
+          notes: (json?.notes && typeof json.notes === 'object') ? json.notes : {},
+        };
+      } catch (_) {
+        return {
+          selection: { files: [], directory: '', updatedAt: 0 },
+          notes: {},
+        };
+      }
+    }
+
+    function renderSelection() {
+      const { files, directory, updatedAt } = manageState.selection;
+      const count = files.length;
+      const timeText = updatedAt ? new Date(updatedAt).toLocaleString() : '未知时间';
+      const dirText = directory ? `，目录：${directory}` : '';
+      metaText.textContent = `共 ${count} 个文件，更新时间：${timeText}${dirText}`;
+      listHead.textContent = `文件列表（${count}）`;
+
+      fileList.innerHTML = '';
+      if (count === 0) {
+        emptyText.style.display = 'block';
+        return;
+      }
+      emptyText.style.display = 'none';
+      const frag = document.createDocumentFragment();
+      for (const name of files) {
+        const tr = document.createElement('tr');
+        const tdPreview = document.createElement('td');
+        const tdName = document.createElement('td');
+        const tdExt = document.createElement('td');
+        const tdNote = document.createElement('td');
+        const parts = splitFileParts(name);
+
+        const ext = parts.extText.toLowerCase();
+        const previewable = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'avif'].includes(ext) && !!directory;
+        if (previewable) {
+          const url = `/api/assets-file?dir=${encodeURIComponent(directory)}&path=${encodeURIComponent(name)}`;
+          const img = document.createElement('img');
+          img.src = url;
+          img.className = 'thumb';
+          img.alt = name;
+          img.addEventListener('click', () => {
+            lightboxImage.src = url;
+            lightbox.classList.add('open');
+          });
+          tdPreview.appendChild(img);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'thumb-placeholder';
+          placeholder.textContent = '无预览';
+          tdPreview.appendChild(placeholder);
+        }
+
+        tr.appendChild(tdPreview);
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'name-input';
+        nameInput.value = parts.baseName;
+        nameInput.dataset.path = name;
+        nameInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            nameInput.blur();
+          }
+        });
+        nameInput.addEventListener('blur', () => {
+          renameFile(directory, nameInput);
+        });
+        tdName.appendChild(nameInput);
+        tr.appendChild(tdName);
+        tdExt.textContent = parts.extText;
+        tr.appendChild(tdExt);
+        const noteInput = document.createElement('textarea');
+        noteInput.className = 'note-input note-textarea';
+        noteInput.placeholder = '添加备注（支持 Markdown）...';
+        noteInput.value = getNote(directory, name);
+        noteInput.addEventListener('input', () => {
+          setNote(directory, name, noteInput.value);
+        });
+        tdNote.appendChild(noteInput);
+        tr.appendChild(tdNote);
+        frag.appendChild(tr);
+      }
+      fileList.appendChild(frag);
+    }
+
+    async function renameFile(directory, inputEl) {
+      const oldPath = inputEl.dataset.path || '';
+      if (!oldPath) return;
+      const parts = splitFileParts(oldPath);
+      const oldBase = parts.baseName;
+      const newBase = (inputEl.value || '').trim();
+      if (!newBase || newBase === oldBase) {
+        inputEl.value = oldBase;
+        return;
+      }
+      if (/[\/\\\0]/.test(newBase) || newBase === '.' || newBase === '..') {
+        alert('文件名包含非法字符');
+        inputEl.value = oldBase;
+        return;
+      }
+
+      inputEl.disabled = true;
+      try {
+        const res = await fetch('/api/rename-asset-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            directory,
+            path: oldPath,
+            newBaseName: newBase,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(json.error || `HTTP ${res.status}`);
+        }
+
+        const newPath = typeof json.newPath === 'string' ? json.newPath : `${parts.parent}${newBase}${parts.extWithDot}`;
+        const files = manageState.selection.files;
+        const idx = files.findIndex((item) => item === oldPath);
+        if (idx >= 0) files[idx] = newPath;
+        const oldKey = `${directory || ''}::${oldPath}`;
+        const newKey = `${directory || ''}::${newPath}`;
+        if (Object.prototype.hasOwnProperty.call(manageState.notes, oldKey)) {
+          manageState.notes[newKey] = manageState.notes[oldKey];
+          delete manageState.notes[oldKey];
+        }
+        renderSelection();
+      } catch (e) {
+        alert(`重命名失败：${e.message}`);
+        inputEl.value = oldBase;
+      } finally {
+        inputEl.disabled = false;
+      }
+    }
+
+    function getNote(dir, name) {
+      const key = `${dir || ''}::${name}`;
+      return typeof manageState.notes[key] === 'string' ? manageState.notes[key] : '';
+    }
+
+    function setNote(dir, name, value) {
+      const key = `${dir || ''}::${name}`;
+      manageState.notes[key] = value;
+      if (noteSaveTimers.has(key)) {
+        clearTimeout(noteSaveTimers.get(key));
+      }
+      const timer = setTimeout(async () => {
+        try {
+          await fetch('/api/manage-note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              directory: dir || '',
+              name,
+              note: value,
+            }),
+          });
+        } catch (_) {}
+        noteSaveTimers.delete(key);
+      }, 280);
+      noteSaveTimers.set(key, timer);
+    }
+
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) lightbox.classList.remove('open');
+    });
+    lightboxClose.addEventListener('click', () => lightbox.classList.remove('open'));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox.classList.contains('open')) {
+        lightbox.classList.remove('open');
+      }
+    });
+
+    (async () => {
+      manageState = await loadManageState();
+      renderSelection();
+    })();
+  </script>
+</body>
+</html>
